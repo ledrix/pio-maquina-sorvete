@@ -25,7 +25,7 @@ const int LED = 4;
 const int ETH_CS = 5;
 
 #ifndef LED_BUILTIN
-    #define LED_BUILTIN 2   //ESP32 DevKit
+    #define LED_BUILTIN 2   //ESP32 DevKit 1
 #endif
 
-#endif //PCB_H
+#endif //!PCB_H

@@ -10,4 +10,4 @@ const char* MQTT_IP = "192.168.0.101";
 
 
 
-#endif //CONFIG_H
+#endif //!CONFIG_H

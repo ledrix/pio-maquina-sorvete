@@ -1,7 +1,57 @@
 #include "pcb.h"
 #include "config.h"
+#include "version.h"
 
+volatile bool state[] = { false, 
+                          false, 
+                          false, 
+                          false };
 
+volatile bool level = false;
+volatile bool running = false;
+volatile bool pressure = false;
+volatile bool temperature = false;
+
+void IRAM_ATTR level_ISR()
+{
+  static TickType_t then = 0;
+  TickType_t now = xTaskGetTickCountFromISR();
+
+  if(!digitalRead(LEVEL))
+    then = now;
+
+  level = (now - then <= pdMS_TO_TICKS(100));
+}
+void IRAM_ATTR running_ISR()
+{
+  static TickType_t then = 0;
+  TickType_t now = xTaskGetTickCountFromISR();
+
+  if(!digitalRead(RUNNING))
+    then = now;
+
+  running = (now - then <= pdMS_TO_TICKS(100));
+}
+void IRAM_ATTR pressure_ISR()
+{
+  static TickType_t then = 0;
+  TickType_t now = xTaskGetTickCountFromISR();
+
+  if(!digitalRead(PRESSURE))
+    then = now;
+
+  pressure = (now - then <= pdMS_TO_TICKS(100));
+}
+void IRAM_ATTR temperature_ISR()
+{
+  static TickType_t then = 0;
+  TickType_t now = xTaskGetTickCountFromISR();
+
+  if(!digitalRead(TEMPERATURE))
+    then = now;
+
+  temperature = (now - then <= pdMS_TO_TICKS(100));
+}
 
 void setup() 
 {
@@ -20,33 +70,20 @@ void setup()
   pinMode(PRESSURE, INPUT_PULLUP);
   pinMode(TEMPERATURE, INPUT_PULLUP);
 
-  digitalWrite(LED,HIGH);
-  delay(500);
-  digitalWrite(LED,LOW);
-  digitalWrite(SPINNER,HIGH);
-  delay(500);
-  digitalWrite(SPINNER,LOW);
-  digitalWrite(MIXER,HIGH);
-  delay(500);
-  digitalWrite(MIXER,LOW);
+  attachInterrupt(LEVEL, level_ISR, CHANGE);
+  attachInterrupt(RUNNING, running_ISR, CHANGE);
+  attachInterrupt(PRESSURE, pressure_ISR, CHANGE);
+  attachInterrupt(TEMPERATURE, temperature_ISR, CHANGE);
 
   Serial.begin(115200);
+  Serial.printf("\nHi there! My name is %s.\n", name);
+  Serial.printf("Firmware @ %s\n", VERSION_STR);
 
 }
 
 void loop() 
 {
-  digitalWrite(LED, !digitalRead(LEVEL));
-  digitalWrite(MIXER, !digitalRead(RUNNING));
-  digitalWrite(SPINNER, !digitalRead(PRESSURE));
-
-  Serial.printf("\nLevel --> %d\n", !digitalRead(LEVEL));
-  Serial.printf("Current --> %d\n", !digitalRead(RUNNING));
-  Serial.printf("Pressure --> %d\n", !digitalRead(PRESSURE));
-  Serial.printf("Temperature --> %d\n", !digitalRead(TEMPERATURE));
-
-  //Cap. was not enough to sustain input state throughout the sine wave, 
-  //needs additional logic to handle it
-  
-  // delay(1000);
+  digitalWrite(LED, level);
+  digitalWrite(MIXER, running);
+  digitalWrite(SPINNER, pressure);
 }
