@@ -76,43 +76,19 @@ void statusLED_task(void *parameters);
 //Interrupt Handlers -----------------------------
 void IRAM_ATTR level_ISR()
 {
-  static TickType_t then = 0;
-  TickType_t now = xTaskGetTickCountFromISR();
-
-  if(!digitalRead(LEVEL))
-    then = now;
-
-  level = (now - then <= pdMS_TO_TICKS(100));
+  level = !digitalRead(LEVEL);
 }
 void IRAM_ATTR running_ISR()
 {
-  static TickType_t then = 0;
-  TickType_t now = xTaskGetTickCountFromISR();
-
-  if(!digitalRead(RUNNING))
-    then = now;
-
-  running = (now - then <= pdMS_TO_TICKS(100));
+  running = !digitalRead(RUNNING);
 }
 void IRAM_ATTR pressure_ISR()
 {
-  static TickType_t then = 0;
-  TickType_t now = xTaskGetTickCountFromISR();
-
-  if(!digitalRead(PRESSURE))
-    then = now;
-
-  pressure = (now - then <= pdMS_TO_TICKS(100));
+  pressure = !digitalRead(PRESSURE);
 }
 void IRAM_ATTR temperature_ISR()
 {
-  static TickType_t then = 0;
-  TickType_t now = xTaskGetTickCountFromISR();
-
-  if(!digitalRead(TEMPERATURE))
-    then = now;
-
-  temperature = (now - then <= pdMS_TO_TICKS(100));
+  temperature = !digitalRead(TEMPERATURE);
 }
 //------------------------------------------------
 
@@ -128,16 +104,17 @@ void setup()
   pinMode(LED, OUTPUT);
   pinMode(MIXER, OUTPUT);
   pinMode(SPINNER, OUTPUT);
+  pinMode(LED_BUILTIN, OUTPUT);
 
   pinMode(LEVEL, INPUT_PULLUP);
   pinMode(RUNNING, INPUT_PULLUP);
   pinMode(PRESSURE, INPUT_PULLUP);
   pinMode(TEMPERATURE, INPUT_PULLUP);
 
-  attachInterrupt(LEVEL, level_ISR, CHANGE);
-  attachInterrupt(RUNNING, running_ISR, CHANGE);
-  attachInterrupt(PRESSURE, pressure_ISR, CHANGE);
-  attachInterrupt(TEMPERATURE, temperature_ISR, CHANGE);
+  attachInterrupt(LEVEL,       []() IRAM_ATTR { level       = !digitalRead(LEVEL);       }, CHANGE);
+  attachInterrupt(RUNNING,     []() IRAM_ATTR { running     = !digitalRead(RUNNING);     }, CHANGE);
+  attachInterrupt(PRESSURE,    []() IRAM_ATTR { pressure    = !digitalRead(PRESSURE);    }, CHANGE);
+  attachInterrupt(TEMPERATURE, []() IRAM_ATTR { temperature = !digitalRead(TEMPERATURE); }, CHANGE);
 
   Serial.begin(115200);
   Serial.printf("\nHi there! My name is %s.\n", name);
@@ -185,7 +162,7 @@ void setup()
 
   xTaskCreatePinnedToCore(  machine_task,
                             "Machine Control",
-                            1024,
+                            8192,
                             nullptr,
                             1,
                             &machine_taskhandle,
@@ -193,7 +170,7 @@ void setup()
 
   xTaskCreatePinnedToCore(  lights_task,
                             "LEDs & Buzzer",
-                            1024,
+                            8192,
                             nullptr,
                             1,
                             &lights_taskhandle,
@@ -201,7 +178,7 @@ void setup()
 
   xTaskCreatePinnedToCore(  statusLED_task,
                             "Status LED",
-                            1024,
+                            8192,
                             nullptr,
                             1,
                             &statusLED_taskhandle,
@@ -309,7 +286,10 @@ void kuka_task(void *parameters)
       if(kuka.connect())
         Serial.println("[KUKA]: Connecting...OK");
       else
+      {
         Serial.println("[KUKA]: Connecting...FAIL");
+        vTaskDelay(pdMS_TO_TICKS(1000));
+      }
     }
   }
 }
@@ -335,7 +315,7 @@ void neuromeka_task(void *parameters)
       if(!modbus.connect(IP, 502))
       {
         Serial.println("[Neuromeka]: Connecting...FAIL");
-        vTaskDelay(pdMS_TO_TICKS(100));
+        vTaskDelay(pdMS_TO_TICKS(1000));
         continue;
       }
       Serial.println("[Neuromeka]: Connecting...OK");
