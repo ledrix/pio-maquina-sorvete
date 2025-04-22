@@ -73,26 +73,6 @@ void statusLED_task(void *parameters);
 //------------------------------------------------
 
 
-//Interrupt Handlers -----------------------------
-void IRAM_ATTR level_ISR()
-{
-  level = !digitalRead(LEVEL);
-}
-void IRAM_ATTR running_ISR()
-{
-  running = !digitalRead(RUNNING);
-}
-void IRAM_ATTR pressure_ISR()
-{
-  pressure = !digitalRead(PRESSURE);
-}
-void IRAM_ATTR temperature_ISR()
-{
-  temperature = !digitalRead(TEMPERATURE);
-}
-//------------------------------------------------
-
-
 void setup() 
 {
   pinMode(SIGN_RED, OUTPUT);
@@ -334,7 +314,7 @@ void neuromeka_task(void *parameters)
       robOut[2] = temperature;
       robOut[3] = running;
       robOut[4] = scale_connected;
-      modbus.writeHreg(IP, neuromeka_address, robOut, 5);
+      modbus.writeHreg(IP, neuromeka_address + 5, robOut, 5);
     }
     vTaskDelay(pdMS_TO_TICKS(1000/neuromeka_refresh));
   }
