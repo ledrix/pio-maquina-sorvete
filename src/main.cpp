@@ -322,19 +322,26 @@ void neuromeka_task(void *parameters)
 #endif //NEUROMEKA_ROBOT
 
 
-void callback(char* topic, byte* payload, unsigned int length) 
+void callback(char* topic_array, byte* payload, unsigned int length) 
 {
-  Serial.printf("[MQTT]: Message arrived @ %s --> ", topic);
-
+  String topic = topic_array;
   String message = String((char*)payload).substring(0, length);
-
-  Serial.println(message);
+  Serial.printf("[MQTT]: Message arrived @ %s --> %s\n", topic, message);
 
   if(message.indexOf("ping") != -1)
     mqtt.publish("dev/monitor",("[" + String(name) + "]: Pong!").c_str());
 
-  if(String(topic).indexOf(scale_topic) != -1)
+  if(topic == scale_topic)
     scale_lastComm = xTaskGetTickCount();
+
+  if(topic.endsWith("mixer"))
+    mixer = message == "ON";
+
+  if(topic.endsWith("spinner"))
+    spinner = message == "ON";
+    
+  if(topic.endsWith("finished"))
+    shake_ready = message == "ON";
 }
 
 void mqtt_task(void *parameters)
@@ -351,6 +358,10 @@ void mqtt_task(void *parameters)
       if(mqtt.connect(name))
       {
         Serial.println("[MQTT]: Connecting...OK");
+
+        mqtt.subscribe((String(name) + "/mixer").c_str(), 0);
+        mqtt.subscribe((String(name) + "/spinner").c_str(), 0);
+        mqtt.subscribe((String(name) + "/finished").c_str(), 0);
 
         mqtt.subscribe(scale_topic, 0);
         
