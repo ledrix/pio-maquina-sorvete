@@ -173,7 +173,7 @@ void setup()
   wifi.setConfigPortalTimeout(5 * 60);
   #endif //RELEASE
   wifi.setConfigPortalBlocking(false);
-  wifi.autoConnect(name);
+  wifi.autoConnect(name);  
 
   // mDNS Service
   MDNS.begin(name);
