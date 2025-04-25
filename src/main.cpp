@@ -129,7 +129,7 @@ void setup()
                             &kuka_taskhandle,
                             ARDUINO_RUNNING_CORE );
 #endif //KUKA_ROBOT
-
+/*
 #ifdef NEUROMEKA_ROBOT
   xTaskCreatePinnedToCore(  neuromeka_task,
                             "Neuromeka Robot",
@@ -139,7 +139,7 @@ void setup()
                             &neuromeka_taskhandle,
                             ARDUINO_RUNNING_CORE );
 #endif //NEUROMEKA_ROBOT
-
+*/
   xTaskCreatePinnedToCore(  machine_task,
                             "Machine Control",
                             8192,

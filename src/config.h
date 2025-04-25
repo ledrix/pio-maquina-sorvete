@@ -9,12 +9,12 @@
 // #define KUKA_ROBOT
 #define NEUROMEKA_ROBOT
 
-const char* name    = "ElectroFreeze";
+const char* name    = "MaquinaSorvete";
 
 IPAddress ETH_IP(192, 168, 15, 49);
 byte ETH_MAC[]          = {0xE0, 0xE0, 0xE0, 0xE0, 0xE0, 0xE9};
 
-const char* MQTT_IP     = "192.168.0.101";
+const char* MQTT_IP     = "192.168.15.8";
 const int   mqtt_rate   = 100; //Hz
 const char* scale_topic = "Gripper/reading";
 
@@ -24,7 +24,7 @@ const int   kuka_refresh  = 10; //Hz
 #endif //KUKA
 
 #ifdef NEUROMEKA_ROBOT
-const char* neuromeka_IP      = "192.168.0.101";
+const char* neuromeka_IP      = "192.168.15.46";
 const int   neuromeka_address = 950;
 const int   neuromeka_refresh =  10; //Hz
 #endif //NEUROMEKA
