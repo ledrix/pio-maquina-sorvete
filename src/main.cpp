@@ -55,20 +55,20 @@ bool scale_connected = false;
 TickType_t scale_lastComm = 0;
 
 TaskHandle_t mqtt_taskhandle = nullptr;
-TaskHandle_t kuka_taskhandle = nullptr;
-TaskHandle_t lights_taskhandle = nullptr;
+//TaskHandle_t kuka_taskhandle = nullptr;
+//TaskHandle_t lights_taskhandle = nullptr;
 TaskHandle_t machine_taskhandle = nullptr;
-TaskHandle_t neuromeka_taskhandle = nullptr;
+//TaskHandle_t neuromeka_taskhandle = nullptr;
 TaskHandle_t statusLED_taskhandle = nullptr;
 //------------------------------------------------
 
 
 //Function Prototypes ----------------------------
 void mqtt_task(void *parameters);
-void kuka_task(void *parameters);
-void lights_task(void *parameters);
+//void kuka_task(void *parameters);
+//void lights_task(void *parameters);
 void machine_task(void *parameters);
-void neuromeka_task(void *parameters);
+//void neuromeka_task(void *parameters);
 void statusLED_task(void *parameters);
 //------------------------------------------------
 
@@ -120,26 +120,6 @@ void setup()
                             &mqtt_taskhandle,
                             ARDUINO_RUNNING_CORE );
 
-#ifdef KUKA_ROBOT
-  xTaskCreatePinnedToCore(  kuka_task,
-                            "KUKA Robot",
-                            8192,
-                            nullptr,
-                            1,
-                            &kuka_taskhandle,
-                            ARDUINO_RUNNING_CORE );
-#endif //KUKA_ROBOT
-/*
-#ifdef NEUROMEKA_ROBOT
-  xTaskCreatePinnedToCore(  neuromeka_task,
-                            "Neuromeka Robot",
-                            8192,
-                            nullptr,
-                            1,
-                            &neuromeka_taskhandle,
-                            ARDUINO_RUNNING_CORE );
-#endif //NEUROMEKA_ROBOT
-*/
   xTaskCreatePinnedToCore(  machine_task,
                             "Machine Control",
                             8192,
@@ -147,15 +127,7 @@ void setup()
                             1,
                             &machine_taskhandle,
                             ARDUINO_RUNNING_CORE );
-
-  xTaskCreatePinnedToCore(  lights_task,
-                            "LEDs & Buzzer",
-                            8192,
-                            nullptr,
-                            1,
-                            &lights_taskhandle,
-                            ARDUINO_RUNNING_CORE );
-
+  
   xTaskCreatePinnedToCore(  statusLED_task,
                             "Status LED",
                             8192,
@@ -163,7 +135,7 @@ void setup()
                             1,
                             &statusLED_taskhandle,
                             ARDUINO_RUNNING_CORE );
-
+  
   // WiFi
   wifi.setHostname(name);
   wifi.setDarkMode(true);
@@ -200,127 +172,6 @@ void loop()
     // }
   }
 }
-
-#ifdef KUKA_ROBOT
-void kuka_task(void *parameters)
-{
-  uint8_t i = 0;
-  String response;
-  uint16_t robot[] = {0, 0, 0, 0};
-  uint16_t pRobot[] = {0, 0, 0, 0};
-
-  for(;;)
-  {
-    vTaskDelay(pdMS_TO_TICKS(1000/kuka_refresh));
-    
-    robot_connected = kuka.connected();
-    if(robot_connected)
-    {
-      response = kuka.read(String(kuka_var) + "[" + i + "]");
-      Serial.printf("%s[%d] = %s", kuka_var, i, response);
-
-      if(response.indexOf("ERROR") != -1)
-        continue;
-      
-      robot[i] = response.toInt();
-
-      if(robot[i] > 0)
-      {
-        if(robot[i] == 1)
-        {
-          if(pRobot[i] == 0)
-            motor[i] = 1;
-          else if(motor[i] == 2)
-          {
-            if(!kuka.write(String(kuka_var) + "[" + i + "]", String(motor[i])))
-              continue;
-          }
-        }
-        else if(robot[i] == 2)
-        {
-          if(motor[i] == 3)
-          {
-            if(!kuka.write(String(kuka_var) + "[" + i + "]", String(motor[i])))
-              continue;
-          }
-        }
-        else if(robot[i] == 3)
-        {
-          if(motor[i] == 0)
-          {
-            if(!kuka.write(String(kuka_var) + "[" + i + "]", String(motor[i])))
-              continue;
-          }
-          else if(motor[i] == 2)
-            motor[i] = 3;
-        }
-      }
-      else
-        i = (i + 1 >= 4) ? 0 : i + 1;
-
-      pRobot[i] = robot[i];
-    }
-    else
-    {
-      Serial.println("[KUKA]: Connecting...");
-      if(kuka.connect())
-        Serial.println("[KUKA]: Connecting...OK");
-      else
-      {
-        Serial.println("[KUKA]: Connecting...FAIL");
-        vTaskDelay(pdMS_TO_TICKS(1000));
-      }
-    }
-  }
-}
-#endif //KUKA_ROBOT
-
-
-#ifdef NEUROMEKA_ROBOT
-void neuromeka_task(void *parameters)
-{
-  IPAddress IP;
-  IP.fromString(neuromeka_IP);
-
-  uint16_t robIn[] = {0, 0, 0, 0, 0};
-  uint16_t robOut[] = {0, 0, 0, 0, 0};
-
-  modbus.client();
-  for(;;)
-  {
-    robot_connected = modbus.isConnected(IP);
-    if(!robot_connected)
-    {
-      Serial.println("[Neuromeka]: Connecting...");
-      if(!modbus.connect(IP, 502))
-      {
-        Serial.println("[Neuromeka]: Connecting...FAIL");
-        vTaskDelay(pdMS_TO_TICKS(1000));
-        continue;
-      }
-      Serial.println("[Neuromeka]: Connecting...OK");
-    }
-    else
-    {
-      modbus.task();
-      
-      modbus.readHreg(IP, neuromeka_address, robIn, 5);
-      spinner     = robIn[0];
-      mixer       = robIn[1];
-      shake_ready = robIn[2];
-
-      robOut[0] = level;
-      robOut[1] = pressure;
-      robOut[2] = temperature;
-      robOut[3] = running;
-      robOut[4] = scale_connected;
-      modbus.writeHreg(IP, neuromeka_address + 5, robOut, 5);
-    }
-    vTaskDelay(pdMS_TO_TICKS(1000/neuromeka_refresh));
-  }
-}
-#endif //NEUROMEKA_ROBOT
-
 
 void callback(char* topic_array, byte* payload, unsigned int length) 
 {
@@ -394,7 +245,6 @@ void mqtt_task(void *parameters)
   }
 }
 
-
 void machine_task(void *parameters)
 {
   for(;;)
@@ -407,41 +257,6 @@ void machine_task(void *parameters)
     vTaskDelay(10);
   }
 }
-
-
-void lights_task(void *parameters)
-{
-  TickType_t now = 0;
-  TickType_t then_scale = 0;
-  TickType_t then_ready = 0;
-
-  bool pShakeReady = false;
-
-  for(;;)
-  {
-    now = xTaskGetTickCount();
-
-    digitalWrite(SIGN_YLW, level);
-
-    if(now - then_scale >= pdMS_TO_TICKS(500))
-    {
-      digitalWrite(SIGN_BLE, scale_connected && !digitalRead(SIGN_BLE));
-      then_scale = now;
-    }
-
-    if(shake_ready && !pShakeReady)
-    {
-      digitalWrite(SIGN_GRN, HIGH);
-      then_ready = now;
-    }
-    pShakeReady = shake_ready;
-    if(now - then_ready >= pdMS_TO_TICKS(5000))
-      digitalWrite(SIGN_GRN, LOW);
-
-    vTaskDelay(pdMS_TO_TICKS(10));
-  }
-}
-
 
 void statusLED_task(void *parameters)
 {
