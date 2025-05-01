@@ -140,20 +140,7 @@ void setup()
   // mDNS Service
   MDNS.begin(name);
   MDNS.addService("http", "tcp", 80);
-
-  /*
-  server.on("/1", HTTP_GET, []() {
-    digitalWrite(SPINNER, HIGH);
-    digitalWrite(MIXER, LOW);
-    //server.send(200, "text/plain", "Você acessou Granadine");
-  });
   
-  server.on("/2", HTTP_GET, []() {
-    digitalWrite(MIXER, HIGH);
-    digitalWrite(SPINNER, LOW);
-    //server.send(200, "text/plain", "Você acessou Limao Siciliano");
-  });
-  */
   server.on("/3", HTTP_GET, []() {
     digitalWrite(SPINNER, HIGH);    
     server.send(200, "text/plain", String("\n\n") + "Saida 3 Ativada!");
