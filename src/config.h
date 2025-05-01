@@ -9,12 +9,12 @@
 // #define KUKA_ROBOT
 #define NEUROMEKA_ROBOT
 
-const char* name    = "MaquinaSorvete";
+const char* name    = "SodaPcb2";
 
 IPAddress ETH_IP(192, 168, 15, 49);
 byte ETH_MAC[]          = {0xE0, 0xE0, 0xE0, 0xE0, 0xE0, 0xE9};
 
-const char* MQTT_IP     = "192.168.15.8";
+const char* MQTT_IP     = "192.168.15.5";
 const int   mqtt_rate   = 100; //Hz
 const char* scale_topic = "Gripper/reading";
 

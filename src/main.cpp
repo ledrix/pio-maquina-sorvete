@@ -32,6 +32,7 @@ KUKA kuka(kuka_IP, 7000, kuka_client);
 #endif //KUKA_ROBOT
 #ifdef NEUROMEKA_ROBOT
 ModbusEthernet modbus;
+WebServer server(80);
 #endif //NEUROMEKA_ROBOT
 //------------------------------------------------
 
@@ -55,23 +56,18 @@ bool scale_connected = false;
 TickType_t scale_lastComm = 0;
 
 TaskHandle_t mqtt_taskhandle = nullptr;
-//TaskHandle_t kuka_taskhandle = nullptr;
-//TaskHandle_t lights_taskhandle = nullptr;
-TaskHandle_t machine_taskhandle = nullptr;
-//TaskHandle_t neuromeka_taskhandle = nullptr;
 TaskHandle_t statusLED_taskhandle = nullptr;
 //------------------------------------------------
 
 
 //Function Prototypes ----------------------------
 void mqtt_task(void *parameters);
-//void kuka_task(void *parameters);
-//void lights_task(void *parameters);
-void machine_task(void *parameters);
-//void neuromeka_task(void *parameters);
 void statusLED_task(void *parameters);
 //------------------------------------------------
 
+IPAddress ip(192, 168, 15, 20);
+IPAddress gateway(192, 168, 15, 1);
+IPAddress subnet(255, 255, 255, 0);
 
 void setup() 
 {
@@ -120,13 +116,6 @@ void setup()
                             &mqtt_taskhandle,
                             ARDUINO_RUNNING_CORE );
 
-  xTaskCreatePinnedToCore(  machine_task,
-                            "Machine Control",
-                            8192,
-                            nullptr,
-                            1,
-                            &machine_taskhandle,
-                            ARDUINO_RUNNING_CORE );
   
   xTaskCreatePinnedToCore(  statusLED_task,
                             "Status LED",
@@ -144,6 +133,7 @@ void setup()
   wifi.setConnectTimeout(5 * 60);
   wifi.setConfigPortalTimeout(5 * 60);
   #endif //RELEASE
+  wifi.setSTAStaticIPConfig(ip, gateway, subnet);
   wifi.setConfigPortalBlocking(false);
   wifi.autoConnect(name);  
 
@@ -151,14 +141,51 @@ void setup()
   MDNS.begin(name);
   MDNS.addService("http", "tcp", 80);
 
+  /*
+  server.on("/1", HTTP_GET, []() {
+    digitalWrite(SPINNER, HIGH);
+    digitalWrite(MIXER, LOW);
+    //server.send(200, "text/plain", "Você acessou Granadine");
+  });
+  
+  server.on("/2", HTTP_GET, []() {
+    digitalWrite(MIXER, HIGH);
+    digitalWrite(SPINNER, LOW);
+    //server.send(200, "text/plain", "Você acessou Limao Siciliano");
+  });
+  */
+  server.on("/3", HTTP_GET, []() {
+    digitalWrite(SPINNER, HIGH);    
+    server.send(200, "text/plain", String("\n\n") + "Saida 3 Ativada!");
+  });
+
+  server.on("/4", HTTP_GET, []() {
+    digitalWrite(MIXER, HIGH);    
+    server.send(200, "text/plain", String("\n\n") + "Saida 4 Ativada!");
+  });
+
+  server.on("/0", HTTP_GET, []() {
+    digitalWrite(SPINNER, LOW);
+    digitalWrite(MIXER, LOW);
+    server.send(200, "text/plain", String("\n\n") + "Saidas Desativadas!");
+  });
+  
+  server.on("/wifireset", HTTP_GET, []() {
+    server.send(200, "text/plain", String("\n\n") + "Wifi Resetado!");
+    delay(500);
+    wifi.resetSettings();   
+  });
+
   // OTA Updates
   ArduinoOTA.setHostname(name);
   ArduinoOTA.begin();
+  server.begin();
 }
 
 void loop()
 {
   ArduinoOTA.handle();
+  server.handleClient();
 
   if(!WiFi.isConnected())
   {
@@ -245,6 +272,7 @@ void mqtt_task(void *parameters)
   }
 }
 
+/*
 void machine_task(void *parameters)
 {
   for(;;)
@@ -257,6 +285,7 @@ void machine_task(void *parameters)
     vTaskDelay(10);
   }
 }
+*/
 
 void statusLED_task(void *parameters)
 {
