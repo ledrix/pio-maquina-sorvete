@@ -63,6 +63,7 @@ TaskHandle_t statusLED_taskhandle = nullptr;
 //Function Prototypes ----------------------------
 void mqtt_task(void *parameters);
 void statusLED_task(void *parameters);
+void machine_task(void *parameters);
 //------------------------------------------------
 
 IPAddress ip(192, 168, 15, 10);
