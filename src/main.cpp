@@ -38,13 +38,13 @@ WebServer server(80);
 
 
 //Global Variables -------------------------------
-volatile bool level = false;
-volatile bool running = false;
-volatile bool pressure = false;
-volatile bool temperature = false;
+volatile bool bloqueia_opcoes = false;
+volatile bool libera_xarope = false;
 
-volatile bool spinner = false;
-volatile bool mixer = false;
+volatile bool sabor_1 = false;
+volatile bool sabor_2 = false;
+
+int tempo = 0;
 
 bool mqtt_connected = false;
 bool robot_connected = false;
@@ -57,6 +57,7 @@ TickType_t scale_lastComm = 0;
 
 TaskHandle_t mqtt_taskhandle = nullptr;
 TaskHandle_t statusLED_taskhandle = nullptr;
+TaskHandle_t machine_taskhandle = nullptr;
 //------------------------------------------------
 
 
@@ -79,19 +80,15 @@ void setup()
   pinMode(SIGN_BZR, OUTPUT);
 
   pinMode(LED, OUTPUT);
-  pinMode(MIXER, OUTPUT);
-  pinMode(SPINNER, OUTPUT);
+  pinMode(BOMBA_XAROPE_2, OUTPUT);
+  pinMode(BOMBA_XAROPE_1, OUTPUT);
   pinMode(LED_BUILTIN, OUTPUT);
-
-  pinMode(LEVEL, INPUT_PULLUP);
-  pinMode(RUNNING, INPUT_PULLUP);
-  pinMode(PRESSURE, INPUT_PULLUP);
-  pinMode(TEMPERATURE, INPUT_PULLUP);
-
-  attachInterrupt(LEVEL,       []() IRAM_ATTR { level       = !digitalRead(LEVEL);       }, CHANGE);
-  attachInterrupt(RUNNING,     []() IRAM_ATTR { running     = !digitalRead(RUNNING);     }, CHANGE);
-  attachInterrupt(PRESSURE,    []() IRAM_ATTR { pressure    = !digitalRead(PRESSURE);    }, CHANGE);
-  attachInterrupt(TEMPERATURE, []() IRAM_ATTR { temperature = !digitalRead(TEMPERATURE); }, CHANGE);
+  
+  pinMode(SINAL_BLOQUEIO_ROBO, INPUT_PULLUP);
+  pinMode(SINAL_LIBERA_XAROPE, INPUT_PULLUP);
+  
+  attachInterrupt(SINAL_BLOQUEIO_ROBO,    []() IRAM_ATTR { bloqueia_opcoes    = !digitalRead(SINAL_BLOQUEIO_ROBO);    }, CHANGE);
+  attachInterrupt(SINAL_LIBERA_XAROPE, []() IRAM_ATTR { libera_xarope = !digitalRead(SINAL_LIBERA_XAROPE); }, CHANGE);
 
   Serial.begin(115200);
   Serial.printf("\nHi there! My name is %s.\n", name);
@@ -109,6 +106,14 @@ void setup()
     Serial.printf("[Ethernet]: IP = %s\n", Ethernet.localIP().toString());
 
   // FreeRTOS
+  xTaskCreatePinnedToCore(  machine_task,
+                            "Machine Control",
+                            8192,
+                            nullptr,
+                            1,
+                            &machine_taskhandle,
+                            ARDUINO_RUNNING_CORE );
+
   xTaskCreatePinnedToCore(  mqtt_task,
                             "MQTT Communication",
                             8192,
@@ -143,25 +148,27 @@ void setup()
   MDNS.addService("http", "tcp", 80);
   
   server.on("/1", HTTP_GET, []() {
-    digitalWrite(SPINNER, HIGH);    
+    sabor_1 = true;
+    sabor_2 = false;    
     server.send(200, "text/plain", "\n--> Saida 1 Ativada!\n\n");
   });
 
   server.on("/2", HTTP_GET, []() {
-    digitalWrite(MIXER, HIGH);    
+    sabor_1 = false;
+    sabor_2 = true;    
     server.send(200, "text/plain", "\n--> Saida 2 Ativada!\n\n");
   });
 
   server.on("/0", HTTP_GET, []() {
-    digitalWrite(SPINNER, LOW);
-    digitalWrite(MIXER, LOW);
+    digitalWrite(BOMBA_XAROPE_1, LOW);
+    digitalWrite(BOMBA_XAROPE_2, LOW);
     server.send(200, "text/plain", "\n--> Saidas 1 e 2 Desativadas!\n\n");
   });
   
   server.on("/wifireset", HTTP_GET, []() {
     server.send(200, "text/plain", "\n--> Wifi Resetado e Saidas Desativadas!\n\n");
-    digitalWrite(SPINNER, LOW);
-    digitalWrite(MIXER, LOW);
+    digitalWrite(BOMBA_XAROPE_1, LOW);
+    digitalWrite(BOMBA_XAROPE_2, LOW);
     delay(500);
     wifi.resetSettings();   
   });
@@ -179,14 +186,23 @@ void loop()
 
   if(!WiFi.isConnected())
   {
-    wifi.process();
+    wifi.process();    
+  }
+}
 
-    // static uint32_t then = millis();
-    // if(millis() - then >= 1000)
-    // {
-    //   WiFi.reconnect();
-    //   then = millis();
-    // }
+void machine_task(void *parameters)
+{
+  for(;;)
+  {
+      if(sabor_1 == true) {
+        digitalWrite(BOMBA_XAROPE_1, libera_xarope);
+        delay(tempo);
+      }else if(sabor_2 == true) {
+        digitalWrite(BOMBA_XAROPE_2, libera_xarope);
+        delay(tempo);
+      }         
+
+    vTaskDelay(10);
   }
 }
 
@@ -201,12 +217,12 @@ void callback(char* topic_array, byte* payload, unsigned int length)
 
   if(topic == scale_topic)
     scale_lastComm = xTaskGetTickCount();
+  
+  if(topic.endsWith("spinner"))
+    sabor_1 = message == "ON";
 
   if(topic.endsWith("mixer"))
-    mixer = message == "ON";
-
-  if(topic.endsWith("spinner"))
-    spinner = message == "ON";
+    sabor_2 = message == "ON";
     
   if(topic.endsWith("finished"))
     shake_ready = message == "ON";
@@ -227,8 +243,8 @@ void mqtt_task(void *parameters)
       {
         Serial.println("[MQTT]: Connecting...OK");
 
-        mqtt.subscribe((String(name) + "/mixer").c_str(), 0);
-        mqtt.subscribe((String(name) + "/spinner").c_str(), 0);
+        mqtt.subscribe((String(name) + "/sabor_1").c_str(), 0);
+        mqtt.subscribe((String(name) + "/sabor_2").c_str(), 0);        
         mqtt.subscribe((String(name) + "/finished").c_str(), 0);
 
         mqtt.subscribe(scale_topic, 0);
@@ -248,12 +264,10 @@ void mqtt_task(void *parameters)
     }
     else
     {
-      mqtt.loop();
+      mqtt.loop();      
       
-      mqtt.publish((String(name) + "/level").c_str()      ,       level ? "TRUE" : "FALSE");
-      mqtt.publish((String(name) + "/running").c_str()    ,     running ? "TRUE" : "FALSE");
-      mqtt.publish((String(name) + "/pressure").c_str()   ,    pressure ? "TRUE" : "FALSE");
-      mqtt.publish((String(name) + "/temperature").c_str(), temperature ? "TRUE" : "FALSE");
+      mqtt.publish((String(name) + "/bloqueia_opcoes").c_str(), bloqueia_opcoes ? "TRUE" : "FALSE");
+      mqtt.publish((String(name) + "/libera_xarope").c_str(), libera_xarope ? "TRUE" : "FALSE");
 
       scale_connected = (xTaskGetTickCount() - scale_lastComm < pdMS_TO_TICKS(1000));
 
@@ -261,21 +275,6 @@ void mqtt_task(void *parameters)
     }
   }
 }
-
-/*
-void machine_task(void *parameters)
-{
-  for(;;)
-  {
-    digitalWrite(SPINNER, spinner);
-
-    //Probably needs control logic to only be on for a certain time
-    digitalWrite(MIXER, mixer);
-
-    vTaskDelay(10);
-  }
-}
-*/
 
 void statusLED_task(void *parameters)
 {
