@@ -194,13 +194,7 @@ void machine_task(void *parameters)
 {
   for(;;)
   {
-      if(sabor_1 == true) {
-        digitalWrite(BOMBA_XAROPE_1, libera_xarope);
-        delay(tempo);
-      }else if(sabor_2 == true) {
-        digitalWrite(BOMBA_XAROPE_2, libera_xarope);
-        delay(tempo);
-      }         
+              
 
     vTaskDelay(10);
   }
