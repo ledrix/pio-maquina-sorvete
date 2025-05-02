@@ -44,7 +44,7 @@ volatile bool libera_xarope = false;
 volatile bool sabor_1 = false;
 volatile bool sabor_2 = false;
 
-int tempo = 0;
+int tempo_libera_xarope = 2000;
 
 bool mqtt_connected = false;
 bool robot_connected = false;
@@ -80,9 +80,9 @@ void setup()
   pinMode(SIGN_BZR, OUTPUT);
 
   pinMode(LED, OUTPUT);
-  pinMode(BOMBA_XAROPE_2, OUTPUT);
-  pinMode(BOMBA_XAROPE_1, OUTPUT);
   pinMode(LED_BUILTIN, OUTPUT);
+  pinMode(BOMBA_XAROPE_2, OUTPUT);
+  pinMode(BOMBA_XAROPE_1, OUTPUT);  
   
   pinMode(SINAL_BLOQUEIO_ROBO, INPUT_PULLUP);
   pinMode(SINAL_LIBERA_XAROPE, INPUT_PULLUP);
@@ -148,20 +148,32 @@ void setup()
   MDNS.addService("http", "tcp", 80);
   
   server.on("/1", HTTP_GET, []() {
-    sabor_1 = true;
-    sabor_2 = false;    
-    server.send(200, "text/plain", "\n--> Saida 1 Ativada!\n\n");
+    if (bloqueia_opcoes == false) {
+      sabor_1 = true;
+      sabor_2 = false;
+      server.send(200, "text/plain", "\n--> Saida 1 Ativada!\n\n");
+    }else{
+      server.send(200, "text/plain", "\n--> Saida 1 Bloqueada!\n\n");
+    }       
+    
   });
 
   server.on("/2", HTTP_GET, []() {
-    sabor_1 = false;
-    sabor_2 = true;    
-    server.send(200, "text/plain", "\n--> Saida 2 Ativada!\n\n");
+    if (bloqueia_opcoes == false) {
+      sabor_1 = false;
+      sabor_2 = true; 
+      server.send(200, "text/plain", "\n--> Saida 2 Ativada!\n\n");
+    }else{
+      server.send(200, "text/plain", "\n--> Saida 2 Bloqueada!\n\n");
+    }       
+    
   });
 
   server.on("/0", HTTP_GET, []() {
     digitalWrite(BOMBA_XAROPE_1, LOW);
     digitalWrite(BOMBA_XAROPE_2, LOW);
+    sabor_1 = false;
+    sabor_2 = false;
     server.send(200, "text/plain", "\n--> Saidas 1 e 2 Desativadas!\n\n");
   });
   
@@ -191,14 +203,25 @@ void loop()
 }
 
 void machine_task(void *parameters)
-{
-  for(;;)
-  {
-              
+{  
 
+  for(;;)
+  { 
+    if (libera_xarope) {
+      digitalWrite(BOMBA_XAROPE_1, sabor_1);
+      digitalWrite(BOMBA_XAROPE_2, sabor_2);
+      delay(tempo_libera_xarope);
+      sabor_1 = false;
+      sabor_2 = false;
+    } else {
+      digitalWrite(BOMBA_XAROPE_1, LOW);
+      digitalWrite(BOMBA_XAROPE_2, LOW);
+    }   
+    
     vTaskDelay(10);
   }
 }
+
 
 void callback(char* topic_array, byte* payload, unsigned int length) 
 {
@@ -262,6 +285,8 @@ void mqtt_task(void *parameters)
       
       mqtt.publish((String(name) + "/bloqueia_opcoes").c_str(), bloqueia_opcoes ? "TRUE" : "FALSE");
       mqtt.publish((String(name) + "/libera_xarope").c_str(), libera_xarope ? "TRUE" : "FALSE");
+      mqtt.publish((String(name) + "/sabor_1").c_str(), sabor_1 ? "TRUE" : "FALSE");
+      mqtt.publish((String(name) + "/sabor_2").c_str(), sabor_2 ? "TRUE" : "FALSE");
 
       scale_connected = (xTaskGetTickCount() - scale_lastComm < pdMS_TO_TICKS(1000));
 
