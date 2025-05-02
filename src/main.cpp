@@ -158,7 +158,9 @@ void setup()
   });
   
   server.on("/wifireset", HTTP_GET, []() {
-    server.send(200, "text/plain", "\n--> Wifi Resetado!\n\n");
+    server.send(200, "text/plain", "\n--> Wifi Resetado e Saidas Desativadas!\n\n");
+    digitalWrite(SPINNER, LOW);
+    digitalWrite(MIXER, LOW);
     delay(500);
     wifi.resetSettings();   
   });
