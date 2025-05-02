@@ -154,7 +154,7 @@ void setup()
   server.on("/0", HTTP_GET, []() {
     digitalWrite(SPINNER, LOW);
     digitalWrite(MIXER, LOW);
-    server.send(200, "text/plain", "\n--> Saidas Desativadas!\n\n");
+    server.send(200, "text/plain", "\n--> Saidas 1 e 2 Desativadas!\n\n");
   });
   
   server.on("/wifireset", HTTP_GET, []() {
