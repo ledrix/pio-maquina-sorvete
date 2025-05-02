@@ -65,7 +65,7 @@ void mqtt_task(void *parameters);
 void statusLED_task(void *parameters);
 //------------------------------------------------
 
-IPAddress ip(192, 168, 15, 20);
+IPAddress ip(192, 168, 15, 10);
 IPAddress gateway(192, 168, 15, 1);
 IPAddress subnet(255, 255, 255, 0);
 
@@ -141,14 +141,14 @@ void setup()
   MDNS.begin(name);
   MDNS.addService("http", "tcp", 80);
   
-  server.on("/3", HTTP_GET, []() {
+  server.on("/1", HTTP_GET, []() {
     digitalWrite(SPINNER, HIGH);    
-    server.send(200, "text/plain", "\n--> Saida 3 Ativada!\n\n");
+    server.send(200, "text/plain", "\n--> Saida 1 Ativada!\n\n");
   });
 
-  server.on("/4", HTTP_GET, []() {
+  server.on("/2", HTTP_GET, []() {
     digitalWrite(MIXER, HIGH);    
-    server.send(200, "text/plain", "\n--> Saida 4 Ativada!\n\n");
+    server.send(200, "text/plain", "\n--> Saida 2 Ativada!\n\n");
   });
 
   server.on("/0", HTTP_GET, []() {

@@ -9,7 +9,7 @@
 // #define KUKA_ROBOT
 #define NEUROMEKA_ROBOT
 
-const char* name    = "SodaPcb2";
+const char* name    = "SodaPcb1";
 
 IPAddress ETH_IP(192, 168, 15, 49);
 byte ETH_MAC[]          = {0xE0, 0xE0, 0xE0, 0xE0, 0xE0, 0xE9};
