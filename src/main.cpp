@@ -143,22 +143,22 @@ void setup()
   
   server.on("/3", HTTP_GET, []() {
     digitalWrite(SPINNER, HIGH);    
-    server.send(200, "text/plain", String("\n\n") + "Saida 3 Ativada!");
+    server.send(200, "text/plain", "\n--> Saida 3 Ativada!\n\n");
   });
 
   server.on("/4", HTTP_GET, []() {
     digitalWrite(MIXER, HIGH);    
-    server.send(200, "text/plain", String("\n\n") + "Saida 4 Ativada!");
+    server.send(200, "text/plain", "\n--> Saida 4 Ativada!\n\n");
   });
 
   server.on("/0", HTTP_GET, []() {
     digitalWrite(SPINNER, LOW);
     digitalWrite(MIXER, LOW);
-    server.send(200, "text/plain", String("\n\n") + "Saidas Desativadas!");
+    server.send(200, "text/plain", "\n--> Saidas Desativadas!\n\n");
   });
   
   server.on("/wifireset", HTTP_GET, []() {
-    server.send(200, "text/plain", String("\n\n") + "Wifi Resetado!");
+    server.send(200, "text/plain", "\n--> Wifi Resetado!\n\n");
     delay(500);
     wifi.resetSettings();   
   });
