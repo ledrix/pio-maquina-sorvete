@@ -43,8 +43,7 @@ volatile bool libera_xarope = false;
 
 volatile bool sabor_1 = false;
 volatile bool sabor_2 = false;
-
-int tempo_libera_xarope = 2000;
+volatile bool sabor_3 = false;
 
 bool mqtt_connected = false;
 bool robot_connected = false;
@@ -73,7 +72,7 @@ IPAddress subnet(255, 255, 255, 0);
 
 void setup() 
 {
-  pinMode(SIGN_RED, OUTPUT);
+  pinMode(BOMBA_XAROPE_3, OUTPUT);
   pinMode(SIGN_GRN, OUTPUT);
   pinMode(SIGN_BLE, OUTPUT);
   pinMode(SIGN_YLW, OUTPUT);
@@ -151,6 +150,7 @@ void setup()
     if (bloqueia_opcoes == false) {
       sabor_1 = true;
       sabor_2 = false;
+      sabor_3 = false;
       server.send(200, "text/plain", "\n--> Saida 1 Ativada!\n\n");
     }else{
       server.send(200, "text/plain", "\n--> Saida 1 Bloqueada!\n\n");
@@ -161,10 +161,23 @@ void setup()
   server.on("/2", HTTP_GET, []() {
     if (bloqueia_opcoes == false) {
       sabor_1 = false;
-      sabor_2 = true; 
+      sabor_2 = true;
+      sabor_3 = false;
       server.send(200, "text/plain", "\n--> Saida 2 Ativada!\n\n");
     }else{
       server.send(200, "text/plain", "\n--> Saida 2 Bloqueada!\n\n");
+    }       
+    
+  });
+
+  server.on("/3", HTTP_GET, []() {
+    if (bloqueia_opcoes == false) {
+      sabor_1 = false;
+      sabor_2 = false;
+      sabor_3 = true;
+      server.send(200, "text/plain", "\n--> Saida 3 Ativada!\n\n");
+    }else{
+      server.send(200, "text/plain", "\n--> Saida 3 Bloqueada!\n\n");
     }       
     
   });
@@ -174,15 +187,24 @@ void setup()
     digitalWrite(BOMBA_XAROPE_2, LOW);
     sabor_1 = false;
     sabor_2 = false;
-    server.send(200, "text/plain", "\n--> Saidas 1 e 2 Desativadas!\n\n");
+    sabor_3 = false;
+    server.send(200, "text/plain", "\n--> Saidas 1, 2 e 3 Desativadas!\n\n");
   });
   
   server.on("/wifireset", HTTP_GET, []() {
     server.send(200, "text/plain", "\n--> Wifi Resetado e Saidas Desativadas!\n\n");
     digitalWrite(BOMBA_XAROPE_1, LOW);
     digitalWrite(BOMBA_XAROPE_2, LOW);
+    digitalWrite(BOMBA_XAROPE_3, LOW);
     delay(500);
     wifi.resetSettings();   
+  });
+
+  server.on("/ajuda", HTTP_GET, []() {
+    server.send(200, "text/plain", String("192.168.15.10/1 = SABOR 1\n") +
+                                   String("192.168.15.10/2 = SABOR 2\n") +
+                                   String("192.168.15.10/3 = SABOR 1\n") +
+                                   String("192.168.15.10/wifireset = RESET WIFI\n\n"));       
   });
 
   // OTA Updates
@@ -208,16 +230,20 @@ void machine_task(void *parameters)
   for(;;)
   { 
     if (libera_xarope) {
-      digitalWrite(BOMBA_XAROPE_1, sabor_1);
-      digitalWrite(BOMBA_XAROPE_2, sabor_2);
-      delay(tempo_libera_xarope);
+      while(libera_xarope) {
+        digitalWrite(BOMBA_XAROPE_1, sabor_1);
+        digitalWrite(BOMBA_XAROPE_2, sabor_2);
+        digitalWrite(BOMBA_XAROPE_3, sabor_3);
+        delay(100);
+      } 
       sabor_1 = false;
       sabor_2 = false;
-    } else {
+      sabor_3 = true;           
+    } else { 
       digitalWrite(BOMBA_XAROPE_1, LOW);
       digitalWrite(BOMBA_XAROPE_2, LOW);
-    }   
-    
+      digitalWrite(BOMBA_XAROPE_3, LOW);            
+    }
     vTaskDelay(10);
   }
 }
@@ -261,7 +287,8 @@ void mqtt_task(void *parameters)
         Serial.println("[MQTT]: Connecting...OK");
 
         mqtt.subscribe((String(name) + "/sabor_1").c_str(), 0);
-        mqtt.subscribe((String(name) + "/sabor_2").c_str(), 0);        
+        mqtt.subscribe((String(name) + "/sabor_2").c_str(), 0);     
+        mqtt.subscribe((String(name) + "/sabor_3").c_str(), 0);   
         mqtt.subscribe((String(name) + "/finished").c_str(), 0);
 
         mqtt.subscribe(scale_topic, 0);
@@ -287,6 +314,7 @@ void mqtt_task(void *parameters)
       mqtt.publish((String(name) + "/libera_xarope").c_str(), libera_xarope ? "TRUE" : "FALSE");
       mqtt.publish((String(name) + "/sabor_1").c_str(), sabor_1 ? "TRUE" : "FALSE");
       mqtt.publish((String(name) + "/sabor_2").c_str(), sabor_2 ? "TRUE" : "FALSE");
+      mqtt.publish((String(name) + "/sabor_3").c_str(), sabor_3 ? "TRUE" : "FALSE");
 
       scale_connected = (xTaskGetTickCount() - scale_lastComm < pdMS_TO_TICKS(1000));
 

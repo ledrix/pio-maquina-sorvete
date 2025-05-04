@@ -4,7 +4,7 @@
 #include <Arduino.h>
 
 //Status Sign
-const int SIGN_RED = 32;
+const int BOMBA_XAROPE_3 = 32;
 const int SIGN_GRN = 33;
 const int SIGN_BLE = 25;
 const int SIGN_YLW = 14;
