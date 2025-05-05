@@ -41,9 +41,8 @@ WebServer server(80);
 volatile bool bloqueia_opcoes = false;
 volatile bool libera_xarope = false;
 
-volatile bool sabor_1 = false;
-volatile bool sabor_2 = false;
-volatile bool sabor_3 = false;
+char selecao = '0';
+char selecionado = '0';
 
 bool mqtt_connected = false;
 bool robot_connected = false;
@@ -147,47 +146,24 @@ void setup()
   MDNS.addService("http", "tcp", 80);
   
   server.on("/1", HTTP_GET, []() {
-    if (bloqueia_opcoes == false) {
-      sabor_1 = true;
-      sabor_2 = false;
-      sabor_3 = false;
-      server.send(200, "text/plain", "\n--> Saida 1 Ativada!\n\n");
-    }else{
-      server.send(200, "text/plain", "\n--> Saida 1 Bloqueada!\n\n");
-    }       
-    
+    selecao = '1';      
+    server.send(200, "text/plain", "\n--> Selecionado: Limão Siciliano \n\n");   
   });
 
   server.on("/2", HTTP_GET, []() {
-    if (bloqueia_opcoes == false) {
-      sabor_1 = false;
-      sabor_2 = true;
-      sabor_3 = false;
-      server.send(200, "text/plain", "\n--> Saida 2 Ativada!\n\n");
-    }else{
-      server.send(200, "text/plain", "\n--> Saida 2 Bloqueada!\n\n");
-    }       
-    
+    selecao = '2';      
+    server.send(200, "text/plain", "\n--> Selecionado: Frutas Vermelhas \n\n");   
   });
 
   server.on("/3", HTTP_GET, []() {
-    if (bloqueia_opcoes == false) {
-      sabor_1 = false;
-      sabor_2 = false;
-      sabor_3 = true;
-      server.send(200, "text/plain", "\n--> Saida 3 Ativada!\n\n");
-    }else{
-      server.send(200, "text/plain", "\n--> Saida 3 Bloqueada!\n\n");
-    }       
-    
+    selecao = '3';      
+    server.send(200, "text/plain", "\n--> Selecionado: Maça Verde \n\n");   
   });
 
   server.on("/0", HTTP_GET, []() {
     digitalWrite(BOMBA_XAROPE_1, LOW);
     digitalWrite(BOMBA_XAROPE_2, LOW);
-    sabor_1 = false;
-    sabor_2 = false;
-    sabor_3 = false;
+    digitalWrite(BOMBA_XAROPE_3, LOW);    
     server.send(200, "text/plain", "\n--> Saidas 1, 2 e 3 Desativadas!\n\n");
   });
   
@@ -229,16 +205,29 @@ void machine_task(void *parameters)
 
   for(;;)
   { 
+    if (!bloqueia_opcoes) {
+      selecionado = selecao;
+    }
+
     if (libera_xarope) {
       while(libera_xarope) {
-        digitalWrite(BOMBA_XAROPE_1, sabor_1);
-        digitalWrite(BOMBA_XAROPE_2, sabor_2);
-        digitalWrite(BOMBA_XAROPE_3, sabor_3);
+        switch (selecionado)
+        {
+        case '1':
+          digitalWrite(BOMBA_XAROPE_1, HIGH);
+          break;
+        case '2':
+          digitalWrite(BOMBA_XAROPE_2, HIGH);
+          break;
+        case '3':
+          digitalWrite(BOMBA_XAROPE_3, HIGH);
+          break;
+        
+        default:
+          break;
+        }        
         delay(100);
-      } 
-      sabor_1 = false;
-      sabor_2 = false;
-      sabor_3 = true;           
+      }                  
     } else { 
       digitalWrite(BOMBA_XAROPE_1, LOW);
       digitalWrite(BOMBA_XAROPE_2, LOW);
@@ -260,7 +249,7 @@ void callback(char* topic_array, byte* payload, unsigned int length)
 
   if(topic == scale_topic)
     scale_lastComm = xTaskGetTickCount();
-  
+  /*
   if(topic.endsWith("spinner"))
     sabor_1 = message == "ON";
 
@@ -269,6 +258,7 @@ void callback(char* topic_array, byte* payload, unsigned int length)
     
   if(topic.endsWith("finished"))
     shake_ready = message == "ON";
+  */
 }
 
 void mqtt_task(void *parameters)
@@ -286,10 +276,7 @@ void mqtt_task(void *parameters)
       {
         Serial.println("[MQTT]: Connecting...OK");
 
-        mqtt.subscribe((String(name) + "/sabor_1").c_str(), 0);
-        mqtt.subscribe((String(name) + "/sabor_2").c_str(), 0);     
-        mqtt.subscribe((String(name) + "/sabor_3").c_str(), 0);   
-        mqtt.subscribe((String(name) + "/finished").c_str(), 0);
+        mqtt.subscribe((String(name) + "/sabor_1").c_str(), 0);        
 
         mqtt.subscribe(scale_topic, 0);
         
@@ -309,12 +296,12 @@ void mqtt_task(void *parameters)
     else
     {
       mqtt.loop();      
-      
+      String selected = String(selecionado);
+      String selection = String(selecao);
       mqtt.publish((String(name) + "/bloqueia_opcoes").c_str(), bloqueia_opcoes ? "TRUE" : "FALSE");
       mqtt.publish((String(name) + "/libera_xarope").c_str(), libera_xarope ? "TRUE" : "FALSE");
-      mqtt.publish((String(name) + "/sabor_1").c_str(), sabor_1 ? "TRUE" : "FALSE");
-      mqtt.publish((String(name) + "/sabor_2").c_str(), sabor_2 ? "TRUE" : "FALSE");
-      mqtt.publish((String(name) + "/sabor_3").c_str(), sabor_3 ? "TRUE" : "FALSE");
+      mqtt.publish((String(name) + "/Selecionado:").c_str(), selected.c_str());    
+      mqtt.publish((String(name) + "/Seleção:").c_str(), selection.c_str());  
 
       scale_connected = (xTaskGetTickCount() - scale_lastComm < pdMS_TO_TICKS(1000));
 
