@@ -41,7 +41,7 @@ WebServer server(80);
 volatile bool bloqueia_opcoes = false;
 volatile bool libera_xarope = false;
 
-char selecao = '0';
+char selecao = '3';
 char selecionado = '0';
 
 bool mqtt_connected = false;
